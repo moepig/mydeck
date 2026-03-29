@@ -25,8 +25,7 @@ void test_input_report_clear() {
     TEST_ASSERT_EQUAL(REPORT_ID_INPUT, r.reportId);
     TEST_ASSERT_EQUAL(0, r.buttonId);
     TEST_ASSERT_EQUAL(0, r.event);
-    TEST_ASSERT_EQUAL(0, r.modifier);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         TEST_ASSERT_EQUAL(0, r.reserved[i]);
     }
 }
@@ -44,7 +43,6 @@ void test_button_event_values() {
 
 void test_output_command_values() {
     TEST_ASSERT_EQUAL(0x01, OUTPUT_CMD_SET_LED);
-    TEST_ASSERT_EQUAL(0x02, OUTPUT_CMD_ECHO);
 }
 
 void test_output_report_fields_layout() {

@@ -24,7 +24,7 @@
 #ifdef INSTANCE_DESCRIPTORS
 
 // ---- HID レポートディスクリプタ ---------------------------------
-// Input  Report ID=0x01: 7 bytes (buttonId, event, modifier, reserved[4])
+// Input  Report ID=0x01: 7 bytes (buttonId, event, reserved[5])
 // Feature Report ID=0x02: 7 bytes (command, param, reserved[5])
 // ホストは Feature SET_REPORT で LED 制御コマンドを送る
 static const uint8_t hid_report_desc[] = {

@@ -16,7 +16,7 @@ typedef struct {
 
 typedef struct {
     bool             valid;
-    uint8_t          buttonId;   /* 1 始まり */
+    uint8_t          buttonId;   /* 0 始まり (= pin_index) */
     enum ButtonEvent type;
 } ButtonPressResult;
 

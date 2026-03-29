@@ -6,10 +6,9 @@
  *
  * Input Report（デバイス → PC）
  * Byte 0 : Report ID  固定値 REPORT_ID_INPUT (0x01)
- * Byte 1 : ボタン番号 0x01〜0x10
+ * Byte 1 : ボタン番号 0x00〜0x0F (0 始まり = pin_index)
  * Byte 2 : イベント種別 ButtonEvent を参照
- * Byte 3 : 修飾フラグ（将来拡張用 bitmask）
- * Byte 4-7 : 予約（0x00）
+ * Byte 3-7 : 予約（0x00）
  *
  * Output Report（PC → デバイス）
  * Byte 0 : Report ID  固定値 REPORT_ID_OUTPUT (0x02)
@@ -30,15 +29,13 @@ enum ButtonEvent {
 
 enum OutputCommand {
     OUTPUT_CMD_SET_LED = 0x01,
-    OUTPUT_CMD_ECHO    = 0x02,
 };
 
 typedef struct {
     uint8_t reportId;
     uint8_t buttonId;
     uint8_t event;
-    uint8_t modifier;
-    uint8_t reserved[4];
+    uint8_t reserved[5];
 } InputReport;
 
 typedef struct {

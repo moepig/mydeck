@@ -30,11 +30,11 @@ ButtonPressResult button_service_update(ButtonService *svc) {
             if (s->confirmed) {
                 s->pressedAt = now;
                 s->holdFired = false;
-                ButtonPressResult r = { true, (uint8_t)(i + 1), BUTTON_EVENT_PRESS };
+                ButtonPressResult r = { true, i, BUTTON_EVENT_PRESS };
                 return r;
             } else {
                 if (!s->holdFired) {
-                    ButtonPressResult r = { true, (uint8_t)(i + 1), BUTTON_EVENT_RELEASE };
+                    ButtonPressResult r = { true, i, BUTTON_EVENT_RELEASE };
                     return r;
                 }
             }
@@ -42,7 +42,7 @@ ButtonPressResult button_service_update(ButtonService *svc) {
 
         if (s->confirmed && !s->holdFired && (now - s->pressedAt) >= HOLD_THRESHOLD_MS) {
             s->holdFired = true;
-            ButtonPressResult r = { true, (uint8_t)(i + 1), BUTTON_EVENT_HOLD };
+            ButtonPressResult r = { true, i, BUTTON_EVENT_HOLD };
             return r;
         }
     }

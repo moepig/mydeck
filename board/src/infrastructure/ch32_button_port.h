@@ -2,6 +2,7 @@
 #ifndef UNIT_TEST
 
 #include "../domain/button_port.h"
+#include "matrix_index.h"
 #include "ch32fun.h"
 
 typedef struct {
@@ -16,10 +17,11 @@ typedef struct {
     uint8_t            col_count;
 } Ch32ButtonCtx;
 
+/* pin_index は行優先 (row-major): pin_index = row * col_count + col */
 static bool ch32_button_read(void *ctx, uint8_t pin_index) {
     Ch32ButtonCtx *c = (Ch32ButtonCtx *)ctx;
-    uint8_t row = pin_index / c->col_count;
-    uint8_t col = pin_index % c->col_count;
+    uint8_t row = matrix_row(pin_index, c->col_count);
+    uint8_t col = matrix_col(pin_index, c->col_count);
 
     /* 全 Row を HIGH にリセット (ゴースト防止) */
     for (uint8_t i = 0; i < c->row_count; i++)

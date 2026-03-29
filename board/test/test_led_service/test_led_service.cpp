@@ -107,6 +107,43 @@ void test_tx_and_rx_are_independent() {
     TEST_ASSERT_FALSE(mock_rx_led);
 }
 
+// millis が uint32_t 最大値付近でフラッシュしてもタイマーが正しく動作する
+void test_flash_works_near_millis_overflow() {
+    LedService s;
+    led_service_init(&s, &mock_port);
+
+    mock_time = 0xFFFFFFFF - 10;
+    led_service_flash(&s);
+    TEST_ASSERT_TRUE(mock_rx_led);
+
+    // オーバーフローをまたいで FLASH_DURATION_MS 経過
+    mock_time = 0xFFFFFFFF - 10 + FLASH_DURATION_MS;  // wraps around
+    led_service_update(&s);
+    TEST_ASSERT_FALSE(mock_rx_led);
+}
+
+// flash 完了後の再 flash が正しく動作する
+void test_flash_after_previous_flash_completed() {
+    LedService s;
+    led_service_init(&s, &mock_port);
+
+    mock_time = 0;
+    led_service_flash(&s);
+
+    mock_time = FLASH_DURATION_MS;
+    led_service_update(&s);
+    TEST_ASSERT_FALSE(mock_rx_led);
+
+    // 2 回目の flash
+    mock_time = FLASH_DURATION_MS + 100;
+    led_service_flash(&s);
+    TEST_ASSERT_TRUE(mock_rx_led);
+
+    mock_time = FLASH_DURATION_MS + 100 + FLASH_DURATION_MS;
+    led_service_update(&s);
+    TEST_ASSERT_FALSE(mock_rx_led);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_set_connected_true_turns_on_tx_led);
@@ -117,5 +154,7 @@ int main(int, char**) {
     RUN_TEST(test_flash_resets_timer);
     RUN_TEST(test_update_without_flash_does_nothing);
     RUN_TEST(test_tx_and_rx_are_independent);
+    RUN_TEST(test_flash_works_near_millis_overflow);
+    RUN_TEST(test_flash_after_previous_flash_completed);
     return UNITY_END();
 }
