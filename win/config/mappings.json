@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "device": {
+    "vendorId": 6991,
+    "productId": 37382,
+    "pollingIntervalMs": 100,
+    "reconnectIntervalMs": 5000
+  },
+  "buttons": []
+}

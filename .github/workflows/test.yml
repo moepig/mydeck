@@ -1,0 +1,139 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ----------------------------------------------------------
+  # 1. Pro Micro ユニットテスト（PlatformIO native）
+  # ----------------------------------------------------------
+  promicro:
+    name: Pro Micro (PlatformIO native)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: promicro
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('promicro/platformio.ini') }}
+          restore-keys: pio-
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Run tests (native)
+        run: pio test -e native -v
+
+  # ----------------------------------------------------------
+  # 2. Windows C# ユニットテスト（NUnit）
+  # ----------------------------------------------------------
+  win:
+    name: Windows C# (NUnit)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: win
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
+
+  # ----------------------------------------------------------
+  # 3. インストーラー ビルド + 静的テスト + 動的テスト
+  #    windows-latest ランナー上で直接実行（管理者権限あり）
+  # ----------------------------------------------------------
+  installer:
+    name: Installer (WiX + Pester)
+    runs-on: windows-latest
+    needs: [win]
+
+    defaults:
+      run:
+        working-directory: win
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Install WiX toolset
+        run: dotnet tool install --global wix
+
+      - name: Add WiX extensions
+        run: |
+          wix extension add WixToolset.UI.wixext/5.0.0
+          wix extension add WixToolset.Util.wixext/5.0.0
+
+      - name: Publish app (win-x64 self-contained)
+        run: |
+          dotnet publish MyDeck/MyDeck.csproj `
+            -c Release -r win-x64 --self-contained `
+            -o artifacts/publish
+
+      - name: Build installer
+        run: |
+          dotnet build MyDeck.Installer/MyDeck.Installer.wixproj `
+            -c Release `
+            -p:PublishDir=${{ github.workspace }}\win\artifacts\publish\
+          New-Item -ItemType Directory -Force -Path artifacts/installer
+          Copy-Item MyDeck.Installer/bin/Release/MyDeck-Setup.msi artifacts/installer/
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyDeck-Setup
+          path: win/artifacts/installer/MyDeck-Setup.msi
+          retention-days: 30
+
+      - name: Install Pester
+        run: Install-Module Pester -Force -SkipPublisherCheck -MinimumVersion 5.0.0
+
+      - name: Run static installer tests
+        run: |
+          $result = Invoke-Pester MyDeck.Installer.Tests/Install.Tests.ps1 `
+            -Tag Static -Output Detailed -PassThru
+          if ($result.FailedCount -gt 0) { exit 1 }
+
+      - name: Run dynamic installer tests
+        env:
+          MSI_PATH: ${{ github.workspace }}\win\artifacts\installer\MyDeck-Setup.msi
+        run: |
+          $result = Invoke-Pester MyDeck.Installer.Tests/Install.Tests.ps1 `
+            -Tag Dynamic -Output Detailed -PassThru
+          if ($result.FailedCount -gt 0) { exit 1 }

@@ -1,0 +1,14 @@
+# PlatformIO
+promicro/.pio/
+promicro/.vscode/
+board_src/.pio/
+
+# C# / .NET
+win/*/bin/
+win/*/obj/
+win/*.user
+win/.vs/
+
+# OS
+.DS_Store
+Thumbs.db
