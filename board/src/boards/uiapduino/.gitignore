@@ -1,8 +1,8 @@
-# ch32fun.mk が要求する空スタブ (自動生成)
-mydeck_uiap.c
 # ビルド成果物
 *.o
 *.elf
 *.bin
 *.hex
 *.lst
+*.map
+*_ext.bin

@@ -9,7 +9,7 @@
 # セットアップ (初回):  make setup
 # 依存更新:  make update
 
-TARGET     := mydeck_uiap
+TARGET     := main
 TARGET_MCU := CH32V003
 
 EXT_SRC  := ../../../ext_src
@@ -36,7 +36,6 @@ help:
 
 .PHONY: setup update help debug flash-debug
 
-# 初回: clone していなければ clone、済みなら pull
 setup:
 	@if [ ! -d "$(EXT_SRC)/ch32fun/.git" ]; then \
 	    echo "[setup] Cloning ch32fun..."; \
@@ -55,7 +54,6 @@ setup:
 	@echo "[setup] Building minichlink..."
 	$(MAKE) -C $(EXT_SRC)/ch32fun/minichlink all
 
-# 明示的に pull のみ
 update:
 	@echo "[update] Pulling ch32fun..."
 	git -C $(EXT_SRC)/ch32fun pull
@@ -66,10 +64,8 @@ update:
 
 # ---- ビルド -----------------------------------------------------
 
-# ch32fun.mk は $(TARGET).c を FILES_TO_COMPILE に含める (一括 gcc コンパイル+リンク)
-# C++ エントリポイント (main.cpp) は別途 .o にコンパイルし、elf リンク時に追加する
-# $(TARGET).c は ch32fun.mk を満たすための空ファイル (自動生成)
-CSRC :=
+# エントリポイントは main.c — ch32fun.mk が $(TARGET).c として自動的にビルドする
+# domain/ の .c は ADDITIONAL_C_FILES で追加
 
 EXTRA_CFLAGS := \
     -I$(RVUSB)/rv003usb \
@@ -78,43 +74,12 @@ EXTRA_CFLAGS := \
     -I../..
 
 ADDITIONAL_C_FILES := \
+    ../../domain/button_service.c \
+    ../../domain/led_service.c \
     $(RVUSB)/rv003usb/rv003usb.c \
     $(RVUSB)/rv003usb/rv003usb.S
 
-BUILDDIR ?= .
-
-# ch32fun.mk が要求する $(TARGET).c — 空スタブを自動生成
-$(TARGET).c:
-	@touch $@
-
 -include $(CH32FUN)/ch32fun.mk
-
-# ---- C++ サポート -----------------------------------------------
-CXX      := $(PREFIX)-g++
-CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions -std=c++14
-
-CXXSRCS := \
-    main.cpp \
-    ../../domain/button_service.cpp \
-    ../../domain/led_service.cpp
-
-CXXOBJS := $(addprefix $(BUILDDIR)/,$(notdir $(CXXSRCS:.cpp=.o)))
-
-VPATH += ../../domain
-
-$(BUILDDIR)/%.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
-
-$(BUILDDIR)/button_service.o: ../../domain/button_service.cpp
-	$(CXX) $(CXXFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
-
-$(BUILDDIR)/led_service.o: ../../domain/led_service.cpp
-	$(CXX) $(CXXFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
-
-# ch32fun.mk の $(TARGET).elf ルールを C++ オブジェクト込みで上書き
-# C ソースは gcc で一括コンパイル+リンク、C++ は事前コンパイル済み .o を追加
-$(TARGET).elf : $(FILES_TO_COMPILE) $(CXXOBJS) $(LINKER_SCRIPT) $(EXTRA_ELF_DEPENDENCIES)
-	$(PREFIX)-gcc -o $@ $(FILES_TO_COMPILE) $(CXXOBJS) $(CFLAGS) $(LDFLAGS)
 
 # ---- デバッグビルド ---------------------------------------------
 
@@ -123,7 +88,6 @@ debug: clean
 
 # ---- 書き込み ---------------------------------------------------
 
-# UIAPduino の VID:PID (ブートローダ書き込み待機モード)
 UIAP_VIDPID := 0x1209b803
 
 flash:
@@ -136,4 +100,3 @@ flash-debug: clean
 # monitor は ch32fun.mk が提供 (minichlink -T)
 
 clean: cv_clean
-	rm -f $(TARGET).c $(CXXOBJS)

@@ -1,115 +1,112 @@
 #include <unity.h>
+
+extern "C" {
 #include "../src/domain/led_service.h"
-#include "../src/domain/led_service.cpp"  // NOLINT: Unity ビルド
+#include "../src/domain/led_service.c"  // NOLINT: Unity ビルド
+}
 
-// ---- テスト用 ILedPort モック --------------------------------
-struct MockLedPort : public ILedPort {
-    bool     txLed = false;
-    bool     rxLed = false;
-    uint32_t time  = 0;
+// ---- テスト用 LedPort モック ----------------------------------
+static bool     mock_tx_led;
+static bool     mock_rx_led;
+static uint32_t mock_time;
 
-    void setTxLed(bool on) override { txLed = on; }
-    void setRxLed(bool on) override { rxLed = on; }
-    uint32_t millis() override { return time; }
-};
+static void mock_set_tx(void *, bool on) { mock_tx_led = on; }
+static void mock_set_rx(void *, bool on) { mock_rx_led = on; }
+static uint32_t mock_millis(void *) { return mock_time; }
 
-static MockLedPort mock;
+static LedPort mock_port = { mock_set_tx, mock_set_rx, mock_millis, NULL };
 
 // ---------------------------------------------------------------
 void setUp() {
-    mock.txLed = false;
-    mock.rxLed = false;
-    mock.time  = 0;
+    mock_tx_led = false;
+    mock_rx_led = false;
+    mock_time   = 0;
 }
 void tearDown() {}
 
-// setConnected(true) で TX LED が点灯する
 void test_set_connected_true_turns_on_tx_led() {
-    LedService s(mock);
-    s.setConnected(true);
-    TEST_ASSERT_TRUE(mock.txLed);
+    LedService s;
+    led_service_init(&s, &mock_port);
+    led_service_set_connected(&s, true);
+    TEST_ASSERT_TRUE(mock_tx_led);
 }
 
-// setConnected(false) で TX LED が消灯する
 void test_set_connected_false_turns_off_tx_led() {
-    LedService s(mock);
-    s.setConnected(true);
-    s.setConnected(false);
-    TEST_ASSERT_FALSE(mock.txLed);
+    LedService s;
+    led_service_init(&s, &mock_port);
+    led_service_set_connected(&s, true);
+    led_service_set_connected(&s, false);
+    TEST_ASSERT_FALSE(mock_tx_led);
 }
 
-// flash() 直後に RX LED が点灯する
 void test_flash_turns_on_rx_led() {
-    LedService s(mock);
-    s.flash();
-    TEST_ASSERT_TRUE(mock.rxLed);
+    LedService s;
+    led_service_init(&s, &mock_port);
+    led_service_flash(&s);
+    TEST_ASSERT_TRUE(mock_rx_led);
 }
 
-// update() を FLASH_DURATION_MS 前に呼んでも RX LED は消えない
 void test_update_before_duration_keeps_rx_led_on() {
-    LedService s(mock);
-    mock.time = 0;
-    s.flash();
+    LedService s;
+    led_service_init(&s, &mock_port);
+    mock_time = 0;
+    led_service_flash(&s);
 
-    mock.time = FLASH_DURATION_MS - 1;
-    s.update();
-    TEST_ASSERT_TRUE(mock.rxLed);
+    mock_time = FLASH_DURATION_MS - 1;
+    led_service_update(&s);
+    TEST_ASSERT_TRUE(mock_rx_led);
 }
 
-// update() を FLASH_DURATION_MS 後に呼ぶと RX LED が消灯する
 void test_update_after_duration_turns_off_rx_led() {
-    LedService s(mock);
-    mock.time = 0;
-    s.flash();
+    LedService s;
+    led_service_init(&s, &mock_port);
+    mock_time = 0;
+    led_service_flash(&s);
 
-    mock.time = FLASH_DURATION_MS;
-    s.update();
-    TEST_ASSERT_FALSE(mock.rxLed);
+    mock_time = FLASH_DURATION_MS;
+    led_service_update(&s);
+    TEST_ASSERT_FALSE(mock_rx_led);
 }
 
-// flash() を複数回呼んだ場合、最後の flash() からタイマーがリセットされる
 void test_flash_resets_timer() {
-    LedService s(mock);
-    mock.time = 0;
-    s.flash();
+    LedService s;
+    led_service_init(&s, &mock_port);
+    mock_time = 0;
+    led_service_flash(&s);
 
-    // FLASH_DURATION_MS の手前で再度 flash() → タイマーが延長される
-    mock.time = FLASH_DURATION_MS - 10;
-    s.flash();
+    mock_time = FLASH_DURATION_MS - 10;
+    led_service_flash(&s);
 
-    // 最初の flash() から FLASH_DURATION_MS 経過しても消灯しない
-    mock.time = FLASH_DURATION_MS;
-    s.update();
-    TEST_ASSERT_TRUE(mock.rxLed);
+    mock_time = FLASH_DURATION_MS;
+    led_service_update(&s);
+    TEST_ASSERT_TRUE(mock_rx_led);
 
-    // 2 回目の flash() から FLASH_DURATION_MS 経過したら消灯
-    mock.time = (FLASH_DURATION_MS - 10) + FLASH_DURATION_MS;
-    s.update();
-    TEST_ASSERT_FALSE(mock.rxLed);
+    mock_time = (FLASH_DURATION_MS - 10) + FLASH_DURATION_MS;
+    led_service_update(&s);
+    TEST_ASSERT_FALSE(mock_rx_led);
 }
 
-// flash() なしで update() を呼んでも RX LED は変化しない
 void test_update_without_flash_does_nothing() {
-    LedService s(mock);
-    mock.rxLed = false;
-    s.update();
-    TEST_ASSERT_FALSE(mock.rxLed);
+    LedService s;
+    led_service_init(&s, &mock_port);
+    mock_rx_led = false;
+    led_service_update(&s);
+    TEST_ASSERT_FALSE(mock_rx_led);
 }
 
-// TX LED と RX LED は独立して動作する
 void test_tx_and_rx_are_independent() {
-    LedService s(mock);
-    s.setConnected(true);
-    s.flash();
+    LedService s;
+    led_service_init(&s, &mock_port);
+    led_service_set_connected(&s, true);
+    led_service_flash(&s);
 
-    mock.time = FLASH_DURATION_MS;
-    s.update();  // RX 消灯
+    mock_time = FLASH_DURATION_MS;
+    led_service_update(&s);
 
-    TEST_ASSERT_TRUE(mock.txLed);   // TX は変化しない
-    TEST_ASSERT_FALSE(mock.rxLed);
+    TEST_ASSERT_TRUE(mock_tx_led);
+    TEST_ASSERT_FALSE(mock_rx_led);
 }
 
-// ---------------------------------------------------------------
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_set_connected_true_turns_on_tx_led);

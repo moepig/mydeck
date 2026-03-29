@@ -1,17 +1,14 @@
 #pragma once
-#include "i_led_port.h"
+#include "led_port.h"
 
-static constexpr uint32_t FLASH_DURATION_MS = 80;
+#define FLASH_DURATION_MS 80
 
-class LedService {
-public:
-    explicit LedService(ILedPort& port);
+typedef struct {
+    LedPort *port;
+    uint32_t flashUntil;
+} LedService;
 
-    void setConnected(bool connected);
-    void flash();   // ボタン押下時の短時間点灯
-    void update();  // 毎ループ呼び出す（点灯タイマ管理）
-
-private:
-    ILedPort& port_;
-    uint32_t  flashUntil_;
-};
+void led_service_init(LedService *svc, LedPort *port);
+void led_service_set_connected(LedService *svc, bool connected);
+void led_service_flash(LedService *svc);
+void led_service_update(LedService *svc);

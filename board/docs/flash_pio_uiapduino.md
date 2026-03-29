@@ -43,7 +43,12 @@ scripts/fetch_build_rv003usb.sh
 
 ```bash
 cd board
+
+# 本番ビルド
 pio run -e uiapduino
+
+# デバッグビルド (SWIO printf 有効)
+pio run -e uiapduino_debug
 ```
 
 ## 書き込み
@@ -51,10 +56,30 @@ pio run -e uiapduino
 ```bash
 # ボードを書き込み待機モードにしてから実行
 cd board
+
+# 本番ビルドを書き込み
 pio run -e uiapduino --target upload
+
+# デバッグビルドを書き込み
+pio run -e uiapduino_debug --target upload
 ```
 
 書き込み待機モードへの切り替え方法は [共通リファレンス](flash_procedure.md#書き込み待機モードへの切り替え) を参照。
+
+## シリアルログ (デバッグビルド)
+
+デバッグビルドでは SWIO (PD1) 経由で printf 出力が有効になる。
+minichlink を接続したまま以下のいずれかでログを表示する。
+
+```bash
+# PlatformIO (platform-ch32v 提供のターゲット)
+cd board
+pio run -e uiapduino_debug -t sdi_printf_monitor
+
+# Makefile 経由
+cd board/src/boards/uiapduino
+make monitor
+```
 
 ## デバイス認識確認
 

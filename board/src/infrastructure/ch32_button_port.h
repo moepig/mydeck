@@ -1,55 +1,53 @@
 #pragma once
 #ifndef UNIT_TEST
 
-#include "../domain/i_button_port.h"
+#include "../domain/button_port.h"
 #include "ch32fun.h"
 
-// IButtonPort の ch32fun 実装
-// Row ピンは複数の GPIO ポートに分散可能 (RowPin で port + bit を指定)
-// Col ピンは全て GPIOC (ビット番号で指定)
-struct Ch32ButtonPort : public IButtonPort {
-    struct RowPin {
-        GPIO_TypeDef *port;
-        uint8_t       bit;
-    };
+typedef struct {
+    GPIO_TypeDef *port;
+    uint8_t       bit;
+} Ch32RowPin;
 
-    Ch32ButtonPort(const RowPin *rows, uint8_t rowCount,
-                   const uint8_t *colBits, uint8_t colCount)
-        : rows_(rows), colBits_(colBits),
-          rowCount_(rowCount), colCount_(colCount) {}
+typedef struct {
+    const Ch32RowPin  *rows;
+    const uint8_t     *col_bits;
+    uint8_t            row_count;
+    uint8_t            col_count;
+} Ch32ButtonCtx;
 
-    bool read(uint8_t pinIndex) override {
-        uint8_t row = pinIndex / colCount_;
-        uint8_t col = pinIndex % colCount_;
+static bool ch32_button_read(void *ctx, uint8_t pin_index) {
+    Ch32ButtonCtx *c = (Ch32ButtonCtx *)ctx;
+    uint8_t row = pin_index / c->col_count;
+    uint8_t col = pin_index % c->col_count;
 
-        // 全 Row を HIGH にリセット (ゴースト防止)
-        for (uint8_t i = 0; i < rowCount_; i++)
-            rows_[i].port->BSHR = (1u << rows_[i].bit);
+    /* 全 Row を HIGH にリセット (ゴースト防止) */
+    for (uint8_t i = 0; i < c->row_count; i++)
+        c->rows[i].port->BSHR = (1u << c->rows[i].bit);
 
-        rows_[row].port->BCR = (1u << rows_[row].bit);  // 対象 Row を LOW に駆動
-        // 信号安定待ち (約5µs @ 48MHz)
-        __asm__ volatile(
-            "li t0, 60\n"
-            "1: addi t0,t0,-1\n"
-            "   bnez t0,1b\n"
-            ::: "t0"
-        );
-        bool pressed = !(GPIOC->INDR & (1u << colBits_[col]));
-        rows_[row].port->BSHR = (1u << rows_[row].bit);  // Row を HIGH に戻す
+    c->rows[row].port->BCR = (1u << c->rows[row].bit);  /* 対象 Row を LOW */
+    /* 信号安定待ち (約5us @ 48MHz) */
+    __asm__ volatile(
+        "li t0, 60\n"
+        "1: addi t0,t0,-1\n"
+        "   bnez t0,1b\n"
+        ::: "t0"
+    );
+    bool pressed = !(GPIOC->INDR & (1u << c->col_bits[col]));
+    c->rows[row].port->BSHR = (1u << c->rows[row].bit);  /* Row を HIGH に戻す */
 
-        return pressed;
-    }
+    return pressed;
+}
 
-    uint32_t millis() override {
-        extern volatile uint32_t g_millis;
-        return g_millis;
-    }
+static uint32_t ch32_button_millis(void *ctx) {
+    (void)ctx;
+    extern volatile uint32_t g_millis;
+    return g_millis;
+}
 
-private:
-    const RowPin  *rows_;
-    const uint8_t *colBits_;
-    uint8_t        rowCount_;
-    uint8_t        colCount_;
-};
+static inline ButtonPort ch32_button_port_create(Ch32ButtonCtx *ctx) {
+    ButtonPort p = { ch32_button_read, ch32_button_millis, ctx };
+    return p;
+}
 
-#endif  // UNIT_TEST
+#endif  /* UNIT_TEST */

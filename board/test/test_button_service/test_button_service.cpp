@@ -1,163 +1,162 @@
 #include <unity.h>
+
+extern "C" {
 #include "../src/domain/button_service.h"
-#include "../src/domain/button_service.cpp"  // NOLINT: Unity ビルド
+#include "../src/domain/button_service.c"  // NOLINT: Unity ビルド
+}
 
-// ---- テスト用 IButtonPort モック ----------------------------
-struct MockButtonPort : public IButtonPort {
-    bool states[MAX_BUTTONS] = {};
-    uint32_t time = 0;
+// ---- テスト用 ButtonPort モック ----------------------------
+static bool     mock_states[MAX_BUTTONS];
+static uint32_t mock_time;
 
-    bool read(uint8_t pinIndex) override { return states[pinIndex]; }
-    uint32_t millis() override { return time; }
-};
+static bool mock_read(void *, uint8_t i) { return mock_states[i]; }
+static uint32_t mock_millis(void *) { return mock_time; }
 
-static MockButtonPort mock;
+static ButtonPort mock_port = { mock_read, mock_millis, NULL };
 
 // ---------------------------------------------------------------
 void setUp() {
-    for (auto& s : mock.states) s = false;
-    mock.time = 0;
+    for (int i = 0; i < MAX_BUTTONS; i++) mock_states[i] = false;
+    mock_time = 0;
 }
 void tearDown() {}
 
 void test_no_event_when_idle() {
-    ButtonService s(mock, 4);
-    ButtonPressResult ev = s.update();
+    ButtonService s;
+    button_service_init(&s, &mock_port, 4);
+    ButtonPressResult ev = button_service_update(&s);
     TEST_ASSERT_FALSE(ev.valid);
 }
 
-// 押下後 DEBOUNCE_MS 安定したとき Press が発火する
 void test_press_event_after_debounce_stable() {
-    ButtonService s(mock, 4);
+    ButtonService s;
+    button_service_init(&s, &mock_port, 4);
 
-    mock.states[0] = true;
-    mock.time = 0;
-    s.update();
+    mock_states[0] = true;
+    mock_time = 0;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS;
-    ButtonPressResult ev = s.update();
+    mock_time = DEBOUNCE_MS;
+    ButtonPressResult ev = button_service_update(&s);
 
     TEST_ASSERT_TRUE(ev.valid);
     TEST_ASSERT_EQUAL(1, ev.buttonId);
-    TEST_ASSERT_EQUAL(static_cast<uint8_t>(ButtonEvent::Press),
-                      static_cast<uint8_t>(ev.type));
+    TEST_ASSERT_EQUAL(BUTTON_EVENT_PRESS, ev.type);
 }
 
-// DEBOUNCE_MS 未満で離した場合は Press も Release も発火しない
 void test_no_event_if_released_before_debounce() {
-    ButtonService s(mock, 4);
+    ButtonService s;
+    button_service_init(&s, &mock_port, 4);
 
-    mock.states[0] = true;
-    mock.time = 0;
-    s.update();
+    mock_states[0] = true;
+    mock_time = 0;
+    button_service_update(&s);
 
-    mock.states[0] = false;
-    mock.time = DEBOUNCE_MS - 1;
-    ButtonPressResult ev = s.update();
+    mock_states[0] = false;
+    mock_time = DEBOUNCE_MS - 1;
+    ButtonPressResult ev = button_service_update(&s);
 
     TEST_ASSERT_FALSE(ev.valid);
 }
 
-// Press 確定後、さらに HOLD_THRESHOLD_MS 後に Hold が発火する
 void test_hold_event_fires_after_threshold() {
-    ButtonService s(mock, 4);
+    ButtonService s;
+    button_service_init(&s, &mock_port, 4);
 
-    mock.states[0] = true;
-    mock.time = 0;
-    s.update();
+    mock_states[0] = true;
+    mock_time = 0;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS;
-    s.update();  // Press 確定（pressedAt = DEBOUNCE_MS）
+    mock_time = DEBOUNCE_MS;
+    button_service_update(&s);  // Press
 
-    mock.time = DEBOUNCE_MS + HOLD_THRESHOLD_MS;
-    ButtonPressResult ev = s.update();
+    mock_time = DEBOUNCE_MS + HOLD_THRESHOLD_MS;
+    ButtonPressResult ev = button_service_update(&s);
 
     TEST_ASSERT_TRUE(ev.valid);
     TEST_ASSERT_EQUAL(1, ev.buttonId);
-    TEST_ASSERT_EQUAL(static_cast<uint8_t>(ButtonEvent::Hold),
-                      static_cast<uint8_t>(ev.type));
+    TEST_ASSERT_EQUAL(BUTTON_EVENT_HOLD, ev.type);
 }
 
 void test_hold_fires_only_once() {
-    ButtonService s(mock, 4);
+    ButtonService s;
+    button_service_init(&s, &mock_port, 4);
 
-    mock.states[0] = true;
-    mock.time = 0;
-    s.update();
+    mock_states[0] = true;
+    mock_time = 0;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS;
-    s.update();  // Press 確定
+    mock_time = DEBOUNCE_MS;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS + HOLD_THRESHOLD_MS;
-    s.update();  // Hold 発火
+    mock_time = DEBOUNCE_MS + HOLD_THRESHOLD_MS;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS + HOLD_THRESHOLD_MS + 100;
-    ButtonPressResult ev = s.update();  // 2 回目は発火しない
+    mock_time = DEBOUNCE_MS + HOLD_THRESHOLD_MS + 100;
+    ButtonPressResult ev = button_service_update(&s);
     TEST_ASSERT_FALSE(ev.valid);
 }
 
-// 離し確定後に Release が発火する
 void test_release_event_after_debounce() {
-    ButtonService s(mock, 4);
+    ButtonService s;
+    button_service_init(&s, &mock_port, 4);
 
-    mock.states[0] = true;
-    mock.time = 0;
-    s.update();
-    mock.time = DEBOUNCE_MS;
-    s.update();  // Press
+    mock_states[0] = true;
+    mock_time = 0;
+    button_service_update(&s);
+    mock_time = DEBOUNCE_MS;
+    button_service_update(&s);
 
-    mock.states[0] = false;
-    mock.time = DEBOUNCE_MS + 1;
-    s.update();  // raw 変化を記録
+    mock_states[0] = false;
+    mock_time = DEBOUNCE_MS + 1;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS * 2 + 1;
-    ButtonPressResult ev = s.update();  // 離し確定 → Release
+    mock_time = DEBOUNCE_MS * 2 + 1;
+    ButtonPressResult ev = button_service_update(&s);
 
     TEST_ASSERT_TRUE(ev.valid);
     TEST_ASSERT_EQUAL(1, ev.buttonId);
-    TEST_ASSERT_EQUAL(static_cast<uint8_t>(ButtonEvent::Release),
-                      static_cast<uint8_t>(ev.type));
+    TEST_ASSERT_EQUAL(BUTTON_EVENT_RELEASE, ev.type);
 }
 
-// Hold 発火後にボタンを離しても Release は発火しない
 void test_release_not_fired_after_hold() {
-    ButtonService s(mock, 4);
+    ButtonService s;
+    button_service_init(&s, &mock_port, 4);
 
-    mock.states[0] = true;
-    mock.time = 0;
-    s.update();
+    mock_states[0] = true;
+    mock_time = 0;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS;
-    s.update();  // Press 確定
+    mock_time = DEBOUNCE_MS;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS + HOLD_THRESHOLD_MS;
-    s.update();  // Hold 発火
+    mock_time = DEBOUNCE_MS + HOLD_THRESHOLD_MS;
+    button_service_update(&s);
 
-    // ボタンを離す
-    mock.states[0] = false;
-    mock.time = DEBOUNCE_MS + HOLD_THRESHOLD_MS + 1;
-    s.update();  // raw 変化を記録
+    mock_states[0] = false;
+    mock_time = DEBOUNCE_MS + HOLD_THRESHOLD_MS + 1;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS + HOLD_THRESHOLD_MS + 1 + DEBOUNCE_MS;
-    ButtonPressResult ev = s.update();  // 離し確定 → Release は抑制される
+    mock_time = DEBOUNCE_MS + HOLD_THRESHOLD_MS + 1 + DEBOUNCE_MS;
+    ButtonPressResult ev = button_service_update(&s);
     TEST_ASSERT_FALSE(ev.valid);
 }
 
 void test_second_button_independent() {
-    ButtonService s(mock, 4);
+    ButtonService s;
+    button_service_init(&s, &mock_port, 4);
 
-    mock.states[1] = true;
-    mock.time = 0;
-    s.update();
+    mock_states[1] = true;
+    mock_time = 0;
+    button_service_update(&s);
 
-    mock.time = DEBOUNCE_MS;
-    ButtonPressResult ev = s.update();  // ボタン2 の Press 確定
+    mock_time = DEBOUNCE_MS;
+    ButtonPressResult ev = button_service_update(&s);
 
     TEST_ASSERT_TRUE(ev.valid);
-    TEST_ASSERT_EQUAL(2, ev.buttonId);  // ボタン番号は 1 始まり
+    TEST_ASSERT_EQUAL(2, ev.buttonId);
 }
 
-// ---------------------------------------------------------------
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_no_event_when_idle);

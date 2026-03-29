@@ -32,7 +32,12 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 
 ```bash
 cd board/src/boards/uiapduino
-make
+
+# 本番ビルド
+make build
+
+# デバッグビルド (SWIO printf 有効)
+make debug
 ```
 
 ## 書き込み
@@ -40,9 +45,32 @@ make
 ```bash
 # ボードを書き込み待機モードにしてから実行
 cd board/src/boards/uiapduino
+
+# 本番ビルドを書き込み
 make flash
+
+# デバッグビルドを書き込み
+make flash-debug
 ```
 
 `Image written.` が表示されたら完了。ボードが自動的に実行モードに移行する。
 
 書き込み待機モードへの切り替え方法は [共通リファレンス](flash_procedure.md#書き込み待機モードへの切り替え) を参照。
+
+## シリアルログ (デバッグビルド)
+
+デバッグビルドでは SWIO (PD1) 経由で printf 出力が有効になる。
+minichlink を接続したまま以下のコマンドでログを表示する。
+
+```bash
+cd board/src/boards/uiapduino
+make monitor
+```
+
+出力例:
+
+```
+mydeck: ready (rows=3 cols=5)
+btn 1 ev 1
+btn 1 ev 2
+```

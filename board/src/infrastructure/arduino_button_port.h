@@ -1,40 +1,37 @@
 #pragma once
 #ifndef UNIT_TEST
 
-#include "../domain/i_button_port.h"
+#include "../domain/button_port.h"
 #include <Arduino.h>
 
-// IButtonPort の Arduino 実装。Row/Column マトリクススキャンで読み取りを行う。
-// pinIndex はリニアなボタン番号（0 始まり）で、row = pinIndex / colCount,
-// col = pinIndex % colCount に変換してスキャンする。
-struct ArduinoButtonPort : public IButtonPort {
-    ArduinoButtonPort(const uint8_t* rowPins, uint8_t rowCount,
-                      const uint8_t* colPins, uint8_t colCount)
-        : rowPins_(rowPins), colPins_(colPins),
-          rowCount_(rowCount), colCount_(colCount) {}
-
-    bool read(uint8_t pinIndex) override {
-        uint8_t row = pinIndex / colCount_;
-        uint8_t col = pinIndex % colCount_;
-
-        // 対象 Row を LOW に駆動してスキャン
-        digitalWrite(rowPins_[row], LOW);
-        delayMicroseconds(5);  // 信号安定待ち
-        bool pressed = (digitalRead(colPins_[col]) == LOW);
-        digitalWrite(rowPins_[row], HIGH);
-
-        return pressed;
-    }
-
-    uint32_t millis() override {
-        return ::millis();
-    }
-
-private:
-    const uint8_t* rowPins_;
-    const uint8_t* colPins_;
-    uint8_t        rowCount_;
-    uint8_t        colCount_;
+struct ArduinoButtonCtx {
+    const uint8_t *row_pins;
+    const uint8_t *col_pins;
+    uint8_t        row_count;
+    uint8_t        col_count;
 };
+
+static bool arduino_button_read(void *ctx, uint8_t pin_index) {
+    ArduinoButtonCtx *c = (ArduinoButtonCtx *)ctx;
+    uint8_t row = pin_index / c->col_count;
+    uint8_t col = pin_index % c->col_count;
+
+    digitalWrite(c->row_pins[row], LOW);
+    delayMicroseconds(5);
+    bool pressed = (digitalRead(c->col_pins[col]) == LOW);
+    digitalWrite(c->row_pins[row], HIGH);
+
+    return pressed;
+}
+
+static uint32_t arduino_button_millis(void *ctx) {
+    (void)ctx;
+    return ::millis();
+}
+
+static inline ButtonPort arduino_button_port_create(ArduinoButtonCtx *ctx) {
+    ButtonPort p = { arduino_button_read, arduino_button_millis, ctx };
+    return p;
+}
 
 #endif  // UNIT_TEST
