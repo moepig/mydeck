@@ -25,7 +25,7 @@ pip install platformio
 ### 実行
 
 ```bash
-cd src/mydeck/promicro
+cd board
 
 # 全テスト
 pio test -e native
@@ -45,7 +45,7 @@ dotnet --version   # 10.0.x であること
 ### 実行
 
 ```bash
-cd src/mydeck/win
+cd win
 
 dotnet test --logger "console;verbosity=detailed"
 ```
@@ -76,7 +76,7 @@ reportgenerator -reports:"**/coverage.cobertura.xml" -targetdir:"coverage-report
 インストーラーを事前にビルドしておく。
 
 ```powershell
-cd src/mydeck/win
+cd win
 
 dotnet publish MyDeck/MyDeck.csproj `
     -c Release -r win-x64 --self-contained -o artifacts/publish
@@ -96,7 +96,7 @@ Copy-Item MyDeck.Installer/bin/Release/MyDeck-Setup.msi artifacts/installer/
 MSI をインストールせずに内容を検証する。管理者権限・Docker 不要。
 
 ```powershell
-cd src/mydeck/win
+cd win
 
 Install-Module Pester -Force -SkipPublisherCheck -MinimumVersion 5.0.0
 
@@ -129,7 +129,7 @@ Invoke-Pester MyDeck.Installer.Tests/Install.Tests.ps1 -Tag Static -Output Detai
 #### 実行（管理者権限不要）
 
 ```powershell
-cd src/mydeck/win/MyDeck.Installer.Tests
+cd win/MyDeck.Installer.Tests
 
 # MSI は自動検索
 .\Run-DynamicTests.ps1

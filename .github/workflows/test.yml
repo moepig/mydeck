@@ -16,7 +16,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: promicro
+        working-directory: board
 
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.platformio
-          key: pio-${{ hashFiles('promicro/platformio.ini') }}
+          key: pio-${{ hashFiles('board/platformio.ini') }}
           restore-keys: pio-
 
       - name: Install PlatformIO

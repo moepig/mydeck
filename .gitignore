@@ -1,7 +1,5 @@
 # PlatformIO
-promicro/.pio/
-promicro/.vscode/
-board_src/.pio/
+board/.pio/
 
 # C# / .NET
 win/*/bin/

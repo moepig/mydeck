@@ -1,6 +1,6 @@
 #include <unity.h>
-#include "../mydeck/domain/button_service.h"
-#include "../mydeck/domain/button_service.cpp"  // NOLINT: Unity ビルド
+#include "../src/domain/button_service.h"
+#include "../src/domain/button_service.cpp"  // NOLINT: Unity ビルド
 
 // ---- テスト用 IButtonPort モック ----------------------------
 struct MockButtonPort : public IButtonPort {

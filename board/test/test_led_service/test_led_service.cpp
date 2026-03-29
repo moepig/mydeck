@@ -1,6 +1,6 @@
 #include <unity.h>
-#include "../mydeck/domain/led_service.h"
-#include "../mydeck/domain/led_service.cpp"  // NOLINT: Unity ビルド
+#include "../src/domain/led_service.h"
+#include "../src/domain/led_service.cpp"  // NOLINT: Unity ビルド
 
 // ---- テスト用 ILedPort モック --------------------------------
 struct MockLedPort : public ILedPort {

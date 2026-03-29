@@ -1,4 +1,4 @@
-# Pro Micro ユニットテスト
+# ファームウェア ユニットテスト
 
 ハードウェア不要。PC 上の `native` 環境で実行する。
 
@@ -11,7 +11,7 @@ pip install platformio
 ## テスト実行
 
 ```bash
-cd src/mydeck/board
+cd board
 
 # 全テスト実行
 pio test -e native

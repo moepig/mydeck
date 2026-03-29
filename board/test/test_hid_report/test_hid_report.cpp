@@ -1,5 +1,5 @@
 #include <unity.h>
-#include "../mydeck/domain/hid_report.h"
+#include "../src/domain/hid_report.h"
 #include <string.h>
 
 void setUp() {}

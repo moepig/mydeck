@@ -7,7 +7,7 @@
 #include "infrastructure/arduino_led_port.h"
 
 // ---- インフラストラクチャ層（ハードウェアアダプタ）-----------
-static ArduinoButtonPort buttonPort(BUTTON_PINS);
+static ArduinoButtonPort buttonPort(ROW_PINS, ROW_COUNT, COL_PINS, COL_COUNT);
 static ArduinoLedPort    ledPort(BOARD_LED_TX, BOARD_LED_RX);
 
 // ---- ドメイン層（ビジネスロジック）---------------------------
@@ -20,14 +20,23 @@ static uint8_t hidRecvBuf[64];
 
 // ---------------------------------------------------------------
 void setup() {
-    for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
-        pinMode(BUTTON_PINS[i], INPUT_PULLUP);
+    // Row ピン: OUTPUT, 初期 HIGH（非選択状態）
+    for (uint8_t i = 0; i < ROW_COUNT; i++) {
+        pinMode(ROW_PINS[i], OUTPUT);
+        digitalWrite(ROW_PINS[i], HIGH);
+    }
+    // Col ピン: INPUT_PULLUP（押下時に Row の LOW が伝わる）
+    for (uint8_t i = 0; i < COL_COUNT; i++) {
+        pinMode(COL_PINS[i], INPUT_PULLUP);
     }
 
     ledPort.begin();
     ledService.setConnected(true);
 
     RawHID.begin(hidRecvBuf, sizeof(hidRecvBuf));
+
+    Serial.begin(115200);
+    Serial.println(F("mydeck ready"));
 }
 
 void loop() {
@@ -39,6 +48,14 @@ void loop() {
         hidSendBuf[2] = static_cast<uint8_t>(ev.type);
         RawHID.write(hidSendBuf, sizeof(hidSendBuf));
         ledService.flash();
+
+        // デバッグ: シリアルモニタにボタンイベントを出力
+        static const char* EVT_NAMES[] = {"?", "Press", "Release", "Hold"};
+        uint8_t ei = static_cast<uint8_t>(ev.type);
+        Serial.print(F("btn="));
+        Serial.print(ev.buttonId);
+        Serial.print(F(" evt="));
+        Serial.println(ei <= 3 ? EVT_NAMES[ei] : "?");
     }
 
     int received = RawHID.available();
