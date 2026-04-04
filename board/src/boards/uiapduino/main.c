@@ -21,21 +21,25 @@
 #include "infrastructure/ch32_led_port.h"
 
 /* ---- millis カウンタ ------------------------------------------ */
+// SysTick を free-running (CTLR=5) で使用し、割り込みなしで更新する。
+// ブートローダと同じ設定にすることで SysTick ISR が USB ISR を遅延させる問題を回避。
 volatile uint32_t g_millis;
-
-void SysTick_Handler(void) __attribute__((interrupt));
-void SysTick_Handler(void) {
-    g_millis++;
-    SysTick->SR = 0;
-}
 
 static void millis_init(void) {
     SysTick->CTLR = 0;
-    SysTick->SR   = 0;
     SysTick->CNT  = 0;
-    SysTick->CMP  = FUNCONF_SYSTEM_CORE_CLOCK / 1000 - 1;
-    SysTick->CTLR = 0xF;
-    NVIC_EnableIRQ(SysTick_IRQn);
+    SysTick->CTLR = 5;  // free-running, HCLK, 割り込みなし (ブートローダと同じ)
+}
+
+static void millis_update(void) {
+    static uint32_t last = 0;
+    uint32_t now   = SysTick->CNT;
+    uint32_t delta = now - last;
+    uint32_t ms    = delta / (FUNCONF_SYSTEM_CORE_CLOCK / 1000);
+    if (ms > 0) {
+        g_millis += ms;
+        last     += ms * (FUNCONF_SYSTEM_CORE_CLOCK / 1000);
+    }
 }
 
 /* ---- GPIO 初期化 ---------------------------------------------- */
@@ -93,6 +97,9 @@ static LedService    ledService;
 static volatile InputReport g_pending;
 static volatile bool        g_hasPending;
 
+/* ---- Feature レポート応答バッファ ----------------------------- */
+static uint8_t s_feature_report[REPORT_SIZE] = { REPORT_ID_OUTPUT };
+
 /* ---- エントリポイント ------------------------------------------ */
 int main(void) {
     SystemInit();
@@ -122,7 +129,10 @@ int main(void) {
 
     DBG_PRINTF("mydeck: ready (rows=%d cols=%d)\n", ROW_COUNT, COL_COUNT);
 
+    static uint32_t lastDebugMs = 0;
+
     while (1) {
+        millis_update();
         ButtonPressResult ev = button_service_update(&buttonService);
         if (ev.valid && !g_hasPending) {
             InputReport rpt;
@@ -133,6 +143,31 @@ int main(void) {
             g_hasPending = true;
             DBG_PRINTF("btn %d ev %d\n", ev.buttonId, (int)ev.type);
         }
+
+        /* ---- 一時デバッグ: 1秒ごとに状態を送信 ------------------- */
+        if (g_millis - lastDebugMs >= 1000 && !g_hasPending) {
+            lastDebugMs = g_millis;
+
+            /* ボタン生状態 bitmask (debounce 前の raw) */
+            uint16_t raw_mask = 0;
+            for (uint8_t bi = 0; bi < BUTTON_COUNT; bi++) {
+                if (buttonService.states[bi].raw) raw_mask |= (uint16_t)(1u << bi);
+            }
+
+            InputReport rpt;
+            input_report_clear(&rpt);
+            rpt.buttonId     = 0xFF;                      // デバッグ識別子
+            rpt.event        = (uint8_t)(g_millis >> 0);  // g_millis [7:0]
+            rpt.reserved[0]  = (uint8_t)(g_millis >> 8);  // g_millis [15:8]
+            rpt.reserved[1]  = (uint8_t)(g_millis >> 16); // g_millis [23:16]
+            rpt.reserved[2]  = (uint8_t)(g_millis >> 24); // g_millis [31:24]
+            rpt.reserved[3]  = (uint8_t)(raw_mask);       // ボタン 0-7 raw
+            rpt.reserved[4]  = (uint8_t)(raw_mask >> 8);  // ボタン 8-14 raw
+            memcpy((void *)&g_pending, &rpt, sizeof(rpt));
+            g_hasPending = true;
+        }
+        /* ---- 一時デバッグここまで -------------------------------- */
+
         led_service_update(&ledService);
     }
 }
@@ -160,14 +195,15 @@ void usb_handle_hid_set_report_start(struct usb_endpoint *e,
                                       int reqLen,
                                       uint32_t lValueLSBIndexMSB)
 {
-    e->max_len = (reqLen < REPORT_SIZE - 1) ? reqLen : REPORT_SIZE - 1;
+    e->max_len = (reqLen < REPORT_SIZE) ? reqLen : REPORT_SIZE;
 }
 
 void usb_handle_hid_get_report_start(struct usb_endpoint *e,
                                       int reqLen,
                                       uint32_t lValueLSBIndexMSB)
 {
-    usb_send_empty(0);
+    e->opaque  = s_feature_report;
+    e->max_len = (reqLen < REPORT_SIZE) ? reqLen : REPORT_SIZE;
 }
 
 void usb_handle_user_data(struct usb_endpoint *e,
@@ -176,9 +212,9 @@ void usb_handle_user_data(struct usb_endpoint *e,
                            int len,
                            struct rv003usb_internal *ist)
 {
-    if (len < 2) return;
-    if (data[0] == (uint8_t)OUTPUT_CMD_SET_LED) {
-        led_service_set_connected(&ledService, data[1] != 0);
+    if (len < 3) return;
+    if (data[0] == REPORT_ID_OUTPUT && data[1] == (uint8_t)OUTPUT_CMD_SET_LED) {
+        led_service_set_connected(&ledService, data[2] != 0);
     }
 }
 

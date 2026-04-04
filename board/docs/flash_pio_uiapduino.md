@@ -4,7 +4,6 @@
 
 - [PlatformIO Core (CLI)](https://platformio.org/) がインストール済み
 - ch32fun / rv003usb が取得済み（未取得の場合は先に初回セットアップを実行）
-- minichlink がビルド済み（PlatformIO が `upload_protocol = minichlink` で使用）
 
 ```powershell
 pip install platformio
@@ -12,19 +11,10 @@ pip install platformio
 
 ### 初回セットアップ（依存ライブラリ取得）
 
-Windows では [MSYS2](https://www.msys2.org/) を使用してビルドツールをインストールする。
-
 ```powershell
-# MSYS2 インストール後、MSYS2 UCRT64 ターミナルで実行
-pacman -S mingw-w64-ucrt-x86_64-gcc make mingw-w64-ucrt-x86_64-libusb
-```
-
-RISC-V ツールチェーンは [xPack GNU RISC-V Embedded GCC](https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases) からダウンロードし、PATH に追加する。
-
-```powershell
-# ch32fun / rv003usb clone + minichlink ビルド (MSYS2 UCRT64 ターミナルで実行)
-cd board/src/boards/uiapduino
-make setup
+# リポジトリルートから実行
+git clone https://github.com/cnlohr/ch32fun.git   board/ext_src/ch32fun
+git clone https://github.com/cnlohr/rv003usb.git  board/ext_src/rv003usb
 ```
 
 ### WinUSB ドライバのインストール
@@ -35,15 +25,6 @@ minichlink が USB デバイスにアクセスするために [Zadig](https://za
 2. Zadig を起動し、Options → List All Devices にチェック
 3. デバイス一覧から UIAPduino (WCH-Link) を選択
 4. ドライバを **WinUSB** に設定し、Install Driver をクリック
-
-### ビルドスクリプト生成
-
-rv003usb の PlatformIO ビルドに必要なスクリプトを生成する（初回および `ext_src/` 更新後）。
-
-```powershell
-cd board
-python scripts/fetch_build_rv003usb.py
-```
 
 ## ビルド
 

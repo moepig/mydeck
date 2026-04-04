@@ -1,3 +1,5 @@
 ext_src/
 .pio/
-pio_build_rv003usb.py
+
+.vscode/launch.json
+.vscode/c_cpp_properties.json
