@@ -34,13 +34,16 @@ board/
 │   ├── test_led_service/
 │   └── test_hid_report/
 ├── ext_src/                外部依存 (ch32fun, rv003usb) — .gitignore 済み
+├── .vscode/                VSCode ワークスペース設定
+│   └── extensions.json         推奨拡張 (PlatformIO IDE)
 └── docs/                   設計・手順ドキュメント
     ├── flash_procedure.md      書き込み手順の目次・共通リファレンス
     ├── flash_pio_promicro.md   Pro Micro — PlatformIO で書き込み
     ├── flash_pio_uiapduino.md  UIAPduino — PlatformIO で書き込み
     ├── flash_make_uiapduino.md UIAPduino — Makefile (ch32fun) で書き込み
     ├── pin_assignment.md       ピンアサイン・マトリクス配線図
-    └── testing.md              テスト実行手順
+    ├── testing.md              テスト実行手順
+    └── vscode_platformio.md    VSCode + PlatformIO 拡張での操作
 ```
 
 ## 対応ボード
@@ -52,19 +55,19 @@ board/
 
 ## クイックスタート
 
-```bash
+```powershell
 cd board
 
 # ユニットテスト
-make test
+pio test -e native
 
 # Pro Micro ビルド・書き込み
-make build
-make flash
+pio run -e sparkfun_promicro16
+pio run -e sparkfun_promicro16 --target upload
 
 # UIAPduino ビルド・書き込み
-make build ENV=uiapduino
-make flash ENV=uiapduino
+pio run -e uiapduino
+pio run -e uiapduino --target upload
 ```
 
 詳細は [docs/flash_procedure.md](docs/flash_procedure.md) を参照。

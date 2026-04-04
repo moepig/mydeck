@@ -4,13 +4,13 @@
 
 ## 前提条件
 
-```bash
+```powershell
 pip install platformio
 ```
 
 ## テスト実行
 
-```bash
+```powershell
 cd board
 
 # 全テスト実行

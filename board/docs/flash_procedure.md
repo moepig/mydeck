@@ -8,7 +8,7 @@
 
 ## ユニットテスト（PC 上で実行）
 
-```bash
+```powershell
 cd board
 pio test -e native
 ```

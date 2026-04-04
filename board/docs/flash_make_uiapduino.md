@@ -2,35 +2,39 @@
 
 ## 前提条件
 
-Ubuntu 24.04 LTS 推奨。詳細は
+Windows では [MSYS2](https://www.msys2.org/) を使用する。詳細は
 [UIAPduino ドキュメント](https://www.uiap.jp/uiapduino/pro-micro/ch32v003/v1dot4) を参照。
 
-```bash
-# ビルドツールと依存ライブラリ
-sudo apt install build-essential libnewlib-dev gcc-riscv64-unknown-elf \
-                 libusb-1.0-0-dev libudev-dev gdb-multiarch
 ```
+# MSYS2 UCRT64 ターミナルで実行
+pacman -S mingw-w64-ucrt-x86_64-gcc make mingw-w64-ucrt-x86_64-libusb
+```
+
+RISC-V ツールチェーンは [xPack GNU RISC-V Embedded GCC](https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases) からダウンロードし、PATH に追加する。
 
 ### 初回セットアップ
 
 ch32fun / rv003usb の clone と minichlink のビルドを一括実行する。
 
-```bash
+```
+# MSYS2 UCRT64 ターミナルで実行
 cd board/src/boards/uiapduino
 make setup
 ```
 
-### udev ルール追加 (Linux)
+### WinUSB ドライバのインストール
 
-```bash
-sudo wget -O /etc/udev/rules.d/99-minichlink-uiap.rules \
-  https://raw.githubusercontent.com/YuukiUmeta-UIAP/ch32fun/3bfa603f11d493710f2a811b5a2dfad905d9425c/minichlink/99-minichlink-uiap.rules
-sudo udevadm control --reload-rules && sudo udevadm trigger
-```
+minichlink が USB デバイスにアクセスするために [Zadig](https://zadig.akeo.ie/) で WinUSB ドライバをインストールする。
+
+1. UIAPduino を書き込み待機モードで USB 接続する
+2. Zadig を起動し、Options → List All Devices にチェック
+3. デバイス一覧から UIAPduino (WCH-Link) を選択
+4. ドライバを **WinUSB** に設定し、Install Driver をクリック
 
 ## ビルド
 
-```bash
+```
+# MSYS2 UCRT64 ターミナルで実行
 cd board/src/boards/uiapduino
 
 # 本番ビルド
@@ -42,8 +46,8 @@ make debug
 
 ## 書き込み
 
-```bash
-# ボードを書き込み待機モードにしてから実行
+```
+# ボードを書き込み待機モードにしてから実行 (MSYS2 UCRT64 ターミナル)
 cd board/src/boards/uiapduino
 
 # 本番ビルドを書き込み
@@ -62,7 +66,8 @@ make flash-debug
 デバッグビルドでは SWIO (PD1) 経由で printf 出力が有効になる。
 minichlink を接続したまま以下のコマンドでログを表示する。
 
-```bash
+```
+# MSYS2 UCRT64 ターミナルで実行
 cd board/src/boards/uiapduino
 make monitor
 ```
