@@ -7,7 +7,7 @@
 #define USB_PORT    D
 #define USB_PIN_DP  3       // PD3 = USB D+
 #define USB_PIN_DM  4       // PD4 = USB D-
-#define USB_PIN_DPU 4       // PD4 = 1.5k pull-up on D-
+#define USB_PIN_DPU 5       // PD5 = pull-up 制御ピン (bootloader と同じ設定)
 
 #define RV003USB_DEBUG_TIMING      0
 #define RV003USB_OPTIMIZE_FLASH    1
