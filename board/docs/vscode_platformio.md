@@ -5,6 +5,13 @@
 1. VSCode に [PlatformIO IDE 拡張](https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide) をインストールする
 2. VSCode で `board/` フォルダを開く — `platformio.ini` が自動検出され、PlatformIO が有効になる
 3. 初回はツールチェーンの自動ダウンロードが走るため、完了まで待つ（ステータスバーに進捗が表示される）
+4. UIAPduino 環境を使う場合は、`board/` で以下を実行してビルドスクリプトを生成する（`.gitignore` 済みのため手動生成が必要）
+
+   ```bash
+   python scripts/fetch_build_rv003usb.py
+   ```
+
+   生成されない場合、`uiapduino` / `uiapduino_debug` のビルド時に `missing SConscript file 'pio_build_rv003usb.py'` エラーになる。
 
 > ワークスペースを開くと推奨拡張のインストールが提案される。
 
