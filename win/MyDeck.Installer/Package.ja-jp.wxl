@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<WixLocalization xmlns="http://wixtoolset.org/schemas/v4/wxs" Language="1041" Codepage="932">
+<WixLocalization xmlns="http://wixtoolset.org/schemas/v4/wxl">
 
-  <String Id="ProductName">MyDeck</String>
-  <String Id="Manufacturer">MyDeck</String>
-  <String Id="DowngradeError">より新しいバージョンの MyDeck がインストール済みです。インストールを中止します。</String>
+  <String Id="ProductName"            Value="MyDeck" />
+  <String Id="Manufacturer"           Value="MyDeck" />
+  <String Id="DowngradeError"         Value="より新しいバージョンの MyDeck がインストール済みです。インストールを中止します。" />
+  <String Id="DesktopShortcutFeature" Value="デスクトップショートカット" />
 
 </WixLocalization>

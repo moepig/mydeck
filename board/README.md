@@ -9,16 +9,16 @@ board/
 ├── platformio.ini          PlatformIO プロジェクト設定（環境・ビルドフラグ）
 ├── Makefile                pio コマンドのショートカット (make build / test / flash)
 ├── src/                    ファームウェアソースコード
-│   ├── mydeck.ino              Pro Micro エントリポイント (Arduino)
+│   ├── mydeck.cpp              Pro Micro エントリポイント (Arduino)
 │   ├── domain/                 ドメイン層 — ボード非依存のビジネスロジック
-│   │   ├── button_service.{h,cpp}   ボタンスキャン・デバウンス・イベント生成
-│   │   ├── led_service.{h,cpp}      LED 点灯パターン制御
+│   │   ├── button_service.{h,c}     ボタンスキャン・デバウンス・イベント生成
+│   │   ├── led_service.{h,c}        LED 点灯パターン制御
 │   │   ├── hid_report.h             HID レポート構造体定義
-│   │   ├── i_button_port.h          ボタン読み取りインターフェース
-│   │   └── i_led_port.h             LED 制御インターフェース
-│   ├── infrastructure/         インフラ層 — ハードウェア固有の IPort 実装
+│   │   ├── button_port.h            ボタン読み取りインターフェース
+│   │   └── led_port.h               LED 制御インターフェース
+│   ├── infrastructure/         インフラ層 — ハードウェア固有の Port 実装
 │   │   ├── arduino_button_port.h    Arduino (ATmega32U4) ボタン実装
-│   │   ├── arduino_led_port.{h,cpp} Arduino LED 実装
+│   │   ├── arduino_led_port.h       Arduino LED 実装
 │   │   ├── ch32_button_port.h       CH32V003 ボタン実装 (GPIOC 直接操作)
 │   │   └── ch32_led_port.h          CH32V003 LED 実装
 │   └── boards/                 ボード固有の設定・エントリポイント
@@ -26,7 +26,7 @@ board/
 │       │   └── board_config.h       Pro Micro ピン定義 (4x4 マトリクス)
 │       └── uiapduino/
 │           ├── board_config.h       UIAPduino ピン定義 (3x5 マトリクス)
-│           ├── main.cpp             UIAPduino エントリポイント (ch32fun)
+│           ├── main.c               UIAPduino エントリポイント (ch32fun)
 │           ├── usb_config.h         rv003usb USB ディスクリプタ定義
 │           └── Makefile             ch32fun 単体ビルド用 (PlatformIO 不要)
 ├── test/                   ユニットテスト (Unity / PlatformIO native)
@@ -50,8 +50,8 @@ board/
 
 | ボード | MCU | マトリクス | PlatformIO env |
 |--------|-----|-----------|----------------|
-| SparkFun Pro Micro | ATmega32U4 | 4x4 (16 ボタン) | `sparkfun_promicro16` |
-| UIAPduino Pro Micro | CH32V003 (RISC-V) | 3x5 (15 ボタン) | `uiapduino` |
+| SparkFun Pro Micro | ATmega32U4 | 2x6 (12 ボタン) | `sparkfun_promicro16` |
+| UIAPduino Pro Micro | CH32V003 (RISC-V) | 2x6 (12 ボタン) | `uiapduino` |
 
 ## クイックスタート
 

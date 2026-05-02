@@ -1,6 +1,6 @@
 namespace MyDeck.Command;
 
-public interface ICommandExecutor
+public interface IMyDeckCommandExecutor
 {
     void Execute(string executable, string arguments);
 }
