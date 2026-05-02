@@ -31,18 +31,18 @@ BeforeAll {
     $script:RunKey     = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 
     # Windows Installer COM オブジェクト経由で MSI プロパティを取得する
+    # InvokeMember を使うことで COM メソッドの戻り値がパイプラインに漏れるのを防ぐ
     function Get-MsiProperty([string]$Path, [string]$Property) {
-        $installer = New-Object -ComObject WindowsInstaller.Installer
-        $db        = $installer.OpenDatabase($Path, 0)  # 0 = msiOpenDatabaseModeReadOnly
-        $view      = $db.OpenView("SELECT Value FROM Property WHERE Property='$Property'")
-        [void]$view.Execute()
-        $rec   = $view.Fetch()
-        $value = if ($rec) { $rec.StringData(1) } else { $null }
-        if ($rec) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($rec) }
-        [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($view)
-        [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($db)
-        [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($installer)
-        return $value
+        $wi   = New-Object -ComObject WindowsInstaller.Installer
+        $db   = $wi.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $wi,   @($Path, 0))
+        $view = $db.GetType().InvokeMember('OpenView',     'InvokeMethod', $null, $db,   @("SELECT Value FROM Property WHERE Property='$Property'"))
+        $view.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $view, $null)
+        $rec  = $view.GetType().InvokeMember('Fetch',      'InvokeMethod', $null, $view, $null)
+        $val  = if ($rec) { $rec.GetType().InvokeMember('StringData', 'GetProperty', $null, $rec, @(1)) } else { $null }
+        foreach ($o in @($rec, $view, $db, $wi)) {
+            if ($o) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($o) }
+        }
+        return $val
     }
 
     function Install-Msi([string]$Path) {
