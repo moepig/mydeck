@@ -9,13 +9,13 @@ namespace MyDeck.Tests.Command;
 [TestFixture]
 public class CommandDispatcherTests
 {
-    private ICommandExecutor _executor = null!;
+    private IMyDeckCommandExecutor _executor = null!;
     private List<ButtonConfig> _buttons = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _executor = Substitute.For<ICommandExecutor>();
+        _executor = Substitute.For<IMyDeckCommandExecutor>();
         _buttons =
         [
             new ButtonConfig

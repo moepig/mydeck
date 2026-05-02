@@ -5,11 +5,11 @@ namespace MyDeck.Command;
 
 public sealed class CommandDispatcher
 {
-    private readonly ICommandExecutor _executor;
+    private readonly IMyDeckCommandExecutor _executor;
     // コンストラクタ時に (buttonId, eventName) → actions を事前構築して O(1) ディスパッチ
     private readonly Dictionary<(byte, string), List<ActionConfig>> _map;
 
-    public CommandDispatcher(ICommandExecutor executor, IReadOnlyList<ButtonConfig> buttons)
+    public CommandDispatcher(IMyDeckCommandExecutor executor, IReadOnlyList<ButtonConfig> buttons)
     {
         _executor = executor;
         _map = new Dictionary<(byte, string), List<ActionConfig>>();

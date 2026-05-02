@@ -46,11 +46,11 @@ public sealed class SettingsForm : Form
         };
         g.DataError += (_, e) => e.ThrowException = false;
 
-        g.Columns.Add(new DataGridViewTextBoxColumn { Name = "ButtonId",   HeaderText = "ID",       FillWeight = 5  });
-        g.Columns.Add(new DataGridViewTextBoxColumn { Name = "Label",      HeaderText = "ラベル",   FillWeight = 18 });
+        g.Columns.Add(new DataGridViewTextBoxColumn { Name = "ButtonId",   HeaderText = "ボタンID",     FillWeight = 8  });
         g.Columns.Add(eventCol);
-        g.Columns.Add(new DataGridViewTextBoxColumn { Name = "Executable", HeaderText = "実行ファイル", FillWeight = 42 });
-        g.Columns.Add(new DataGridViewTextBoxColumn { Name = "Arguments",  HeaderText = "引数",     FillWeight = 25 });
+        g.Columns.Add(new DataGridViewTextBoxColumn { Name = "Executable", HeaderText = "実行ファイル", FillWeight = 44 });
+        g.Columns.Add(new DataGridViewTextBoxColumn { Name = "Arguments",  HeaderText = "引数",         FillWeight = 28 });
+        g.Columns.Add(new DataGridViewTextBoxColumn { Name = "Label",      HeaderText = "メモ",         FillWeight = 20 });
 
         return g;
     }
@@ -102,12 +102,12 @@ public sealed class SettingsForm : Form
         _grid.Rows.Clear();
         foreach (var btn in _current.Buttons)
             foreach (var action in btn.Actions)
-                _grid.Rows.Add(btn.ButtonId, btn.Label, action.Event, action.Executable, action.Arguments);
+                _grid.Rows.Add(btn.ButtonId, action.Event, action.Executable, action.Arguments, btn.Label);
     }
 
     private void OnAdd(object? s, EventArgs e)
     {
-        _grid.Rows.Add("1", "", "press", "", "");
+        _grid.Rows.Add("1", "press", "", "", "");
         int idx = _grid.Rows.Count - 1;
         _grid.ClearSelection();
         _grid.Rows[idx].Selected = true;

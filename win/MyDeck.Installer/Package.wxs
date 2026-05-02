@@ -6,7 +6,7 @@
            Manufacturer="!(loc.Manufacturer)"
            Version="1.0.0.0"
            UpgradeCode="4D454B44-0001-0000-C000-000000000046"
-           Language="1041"
+           Language="1033"
            Compressed="yes">
 
     <SummaryInformation Keywords="Installer" />
@@ -29,12 +29,15 @@
       <Directory Id="AppMenuFolder" Name="MyDeck" />
     </StandardDirectory>
 
+    <!-- デスクトップ -->
+    <StandardDirectory Id="DesktopFolder" />
+
     <!--
       発行済み出力ディレクトリ内の全ファイルを自動収集する。
       ビルド前に dotnet publish -p:PublishProfile=installer を実行しておくこと。
     -->
     <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
-      <Files Source="$(var.PublishDir)**" />
+      <Files Include="$(var.PublishDir)**" />
     </ComponentGroup>
 
     <!-- スタートメニューショートカット -->
@@ -48,6 +51,23 @@
         <RegistryValue Root="HKCU"
                        Key="Software\MyDeck"
                        Name="ShortcutInstalled"
+                       Value="1"
+                       Type="integer"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- デスクトップショートカット（設定画面を直接開く） -->
+    <ComponentGroup Id="DesktopShortcuts" Directory="DesktopFolder">
+      <Component Guid="*">
+        <Shortcut Id="DesktopShortcut"
+                  Name="!(loc.ProductName)"
+                  Target="[INSTALLFOLDER]MyDeck.exe"
+                  Arguments="--settings"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\MyDeck"
+                       Name="DesktopShortcutInstalled"
                        Value="1"
                        Type="integer"
                        KeyPath="yes" />
@@ -70,7 +90,16 @@
       <ComponentGroupRef Id="AppFiles" />
       <ComponentGroupRef Id="Shortcuts" />
       <ComponentGroupRef Id="AutoStart" />
+
+      <!-- デスクトップショートカット（任意） -->
+      <Feature Id="DesktopShortcutFeature" Title="!(loc.DesktopShortcutFeature)" Level="1">
+        <ComponentGroupRef Id="DesktopShortcuts" />
+      </Feature>
     </Feature>
+
+    <!-- インストーラー UI（機能選択画面を含む） -->
+    <ui:WixUI Id="WixUI_FeatureTree" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
 
   </Package>
 

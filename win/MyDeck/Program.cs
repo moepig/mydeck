@@ -5,6 +5,19 @@ using MyDeck.Hid;
 
 ApplicationConfiguration.Initialize();
 
+const string mutexName = "Global\\MyDeck-SingleInstance";
+const string eventName = "Global\\MyDeck-OpenSettings";
+
+using var guard = new SingleInstanceGuard(mutexName, eventName);
+
+if (!guard.IsFirstInstance)
+{
+    // 既に起動中 — --settings なら設定画面を開くようシグナルを送って終了
+    if (args.Contains("--settings"))
+        guard.TrySignal();
+    return;
+}
+
 var configPath = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
     "MyDeck", "mappings.json");
@@ -37,6 +50,9 @@ catch (Exception ex)
 }
 
 using var hid = new HidDevice();
-using var app = new App(config, hid, new CommandExecutor(), configPath);
+using var app = new App(config, hid, new CommandExecutor(), configPath, eventName);
+
+if (args.Contains("--settings"))
+    app.OpenSettings();
 
 Application.Run();

@@ -47,17 +47,17 @@ static void matrix_init(void) {
     RCC->APB2PCENR |= RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD;
 
     /* PC0: push-pull 出力 (LED3 モード表示)
-     * PC1-PC2: push-pull 出力 (Row1, Row2)
-     * PC3-PC7: 入力 pull-up (Col) */
+     * PC1: push-pull 出力 (Row1)
+     * PC2-PC7: 入力 pull-up (Col0-Col5) */
     GPIOC->CFGLR =
         (0x1u <<  0) |  /* PC0 LED3 */
         (0x1u <<  4) |  /* PC1 Row1 */
-        (0x1u <<  8) |  /* PC2 Row2 */
-        (0x8u << 12) |  /* PC3 Col0 */
-        (0x8u << 16) |  /* PC4 Col1 */
-        (0x8u << 20) |  /* PC5 Col2 */
-        (0x8u << 24) |  /* PC6 Col3 */
-        (0x8u << 28);   /* PC7 Col4 */
+        (0x8u <<  8) |  /* PC2 Col0 */
+        (0x8u << 12) |  /* PC3 Col1 */
+        (0x8u << 16) |  /* PC4 Col2 */
+        (0x8u << 20) |  /* PC5 Col3 */
+        (0x8u << 24) |  /* PC6 Col4 */
+        (0x8u << 28);   /* PC7 Col5 */
     GPIOC->BSHR = 0xFFu;
 
     /* PD2: push-pull 出力 10MHz (Row0) */
@@ -81,10 +81,9 @@ static void seamless_switch_init(void) {
 static const Ch32RowPin kRows[ROW_COUNT] = {
     { GPIOD, ROW0_BIT },
     { GPIOC, ROW1_BIT },
-    { GPIOC, ROW2_BIT },
 };
 static const uint8_t kColBits[COL_COUNT] = {
-    COL_BIT_0, COL_BIT_1, COL_BIT_2, COL_BIT_3, COL_BIT_4,
+    COL_BIT_0, COL_BIT_1, COL_BIT_2, COL_BIT_3, COL_BIT_4, COL_BIT_5,
 };
 
 static Ch32ButtonCtx buttonCtx;
@@ -129,8 +128,6 @@ int main(void) {
 
     DBG_PRINTF("mydeck: ready (rows=%d cols=%d)\n", ROW_COUNT, COL_COUNT);
 
-    static uint32_t lastDebugMs = 0;
-
     while (1) {
         millis_update();
         ButtonPressResult ev = button_service_update(&buttonService);
@@ -143,30 +140,6 @@ int main(void) {
             g_hasPending = true;
             DBG_PRINTF("btn %d ev %d\n", ev.buttonId, (int)ev.type);
         }
-
-        /* ---- 一時デバッグ: 1秒ごとに状態を送信 ------------------- */
-        if (g_millis - lastDebugMs >= 1000 && !g_hasPending) {
-            lastDebugMs = g_millis;
-
-            /* ボタン生状態 bitmask (debounce 前の raw) */
-            uint16_t raw_mask = 0;
-            for (uint8_t bi = 0; bi < BUTTON_COUNT; bi++) {
-                if (buttonService.states[bi].raw) raw_mask |= (uint16_t)(1u << bi);
-            }
-
-            InputReport rpt;
-            input_report_clear(&rpt);
-            rpt.buttonId     = 0xFF;                      // デバッグ識別子
-            rpt.event        = (uint8_t)(g_millis >> 0);  // g_millis [7:0]
-            rpt.reserved[0]  = (uint8_t)(g_millis >> 8);  // g_millis [15:8]
-            rpt.reserved[1]  = (uint8_t)(g_millis >> 16); // g_millis [23:16]
-            rpt.reserved[2]  = (uint8_t)(g_millis >> 24); // g_millis [31:24]
-            rpt.reserved[3]  = (uint8_t)(raw_mask);       // ボタン 0-7 raw
-            rpt.reserved[4]  = (uint8_t)(raw_mask >> 8);  // ボタン 8-14 raw
-            memcpy((void *)&g_pending, &rpt, sizeof(rpt));
-            g_hasPending = true;
-        }
-        /* ---- 一時デバッグここまで -------------------------------- */
 
         led_service_update(&ledService);
     }

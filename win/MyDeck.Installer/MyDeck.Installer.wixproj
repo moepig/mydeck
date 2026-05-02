@@ -1,8 +1,9 @@
-<Project Sdk="WixToolset.Sdk/5.0.0">
+<Project Sdk="WixToolset.Sdk/5.0.2">
 
   <PropertyGroup>
     <OutputName>MyDeck-Setup</OutputName>
     <Platform>x64</Platform>
+    <Cultures>en-US</Cultures>
     <!--
       CI では -p:PublishDir=<絶対パス> で上書きする。
       ローカルビルドのデフォルト: dotnet publish -p:PublishProfile=installer 後のフォルダ
@@ -12,8 +13,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="WixToolset.UI.wixext"   Version="5.0.0" />
-    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.0" />
+    <PackageReference Include="WixToolset.UI.wixext"   Version="5.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
   </ItemGroup>
 
 </Project>

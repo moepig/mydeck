@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace MyDeck.Command;
 
-public sealed class CommandExecutor : ICommandExecutor
+public sealed class CommandExecutor : IMyDeckCommandExecutor
 {
     public void Execute(string executable, string arguments)
     {
