@@ -30,18 +30,27 @@ BeforeAll {
     $script:InstallDir = "$env:ProgramFiles\MyDeck"
     $script:RunKey     = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 
-    # Windows Installer COM オブジェクト経由で MSI プロパティを取得する
-    # InvokeMember を使うことで COM メソッドの戻り値がパイプラインに漏れるのを防ぐ
-    function Get-MsiProperty([string]$Path, [string]$Property) {
-        $wi   = New-Object -ComObject WindowsInstaller.Installer
-        $db   = $wi.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $wi,   @($Path, 0))
-        $view = $db.GetType().InvokeMember('OpenView',     'InvokeMethod', $null, $db,   @("SELECT Value FROM Property WHERE Property='$Property'"))
-        $view.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $view, $null)
-        $rec  = $view.GetType().InvokeMember('Fetch',      'InvokeMethod', $null, $view, $null)
-        $val  = if ($rec) { $rec.GetType().InvokeMember('StringData', 'GetProperty', $null, $rec, @(1)) } else { $null }
-        foreach ($o in @($rec, $view, $db, $wi)) {
-            if ($o) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($o) }
-        }
+    # MSI データベースを一度だけ開いて全クエリで共有する。
+    # 呼び出しごとに OpenDatabase すると COM の状態が壊れて後続クエリが null を返すため。
+    # InvokeMember 経由で呼ぶことで COM 戻り値がパイプラインに漏れるのを防ぐ。
+    if ($script:MsiPath) {
+        $script:WiInstaller = New-Object -ComObject WindowsInstaller.Installer
+        $script:WiDb = $script:WiInstaller.GetType().InvokeMember(
+            'OpenDatabase', 'InvokeMethod', $null, $script:WiInstaller, @([string]$script:MsiPath, 0)
+        )
+    }
+
+    function Get-MsiProperty([string]$Property) {
+        if (-not $script:WiDb) { return $null }
+        $view = $script:WiDb.GetType().InvokeMember(
+            'OpenView', 'InvokeMethod', $null, $script:WiDb,
+            @("SELECT Value FROM Property WHERE Property='$Property'")
+        )
+        [void]$view.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $view, $null)
+        $rec = $view.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $view, $null)
+        $val = if ($rec) { $rec.GetType().InvokeMember('StringData', 'GetProperty', $null, $rec, @(1)) } else { $null }
+        if ($rec) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($rec) }
+        [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($view)
         return $val
     }
 
@@ -60,6 +69,11 @@ BeforeAll {
     }
 }
 
+AfterAll {
+    if ($script:WiDb)        { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($script:WiDb) }
+    if ($script:WiInstaller) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($script:WiInstaller) }
+}
+
 # ============================================================
 #  1. 静的検査（管理者権限不要）
 # ============================================================
@@ -71,27 +85,27 @@ Describe "MSI 静的検査" -Tag Static {
     }
 
     It "ProductName が 'MyDeck' である" {
-        $name = Get-MsiProperty $script:MsiPath "ProductName"
+        $name = Get-MsiProperty "ProductName"
         $name | Should -Be "MyDeck"
     }
 
     It "Manufacturer が 'MyDeck' である" {
-        $mfr = Get-MsiProperty $script:MsiPath "Manufacturer"
+        $mfr = Get-MsiProperty "Manufacturer"
         $mfr | Should -Be "MyDeck"
     }
 
     It "ProductVersion が semver 形式である" {
-        $ver = Get-MsiProperty $script:MsiPath "ProductVersion"
+        $ver = Get-MsiProperty "ProductVersion"
         $ver | Should -Match '^\d+\.\d+\.\d+'
     }
 
     It "ProductCode が GUID 形式である" {
-        $code = Get-MsiProperty $script:MsiPath "ProductCode"
+        $code = Get-MsiProperty "ProductCode"
         $code | Should -Match '^\{[0-9A-Fa-f\-]{36}\}$'
     }
 
     It "UpgradeCode が GUID 形式である" {
-        $code = Get-MsiProperty $script:MsiPath "UpgradeCode"
+        $code = Get-MsiProperty "UpgradeCode"
         $code | Should -Match '^\{[0-9A-Fa-f\-]{36}\}$'
     }
 }
@@ -108,7 +122,7 @@ Describe "インストール検査" -Tag Dynamic {
             throw "このテストブロックは管理者権限で実行してください。"
         }
 
-        $script:ProductCode = Get-MsiProperty $script:MsiPath "ProductCode"
+        $script:ProductCode = Get-MsiProperty "ProductCode"
         $script:ExitCode    = Install-Msi $script:MsiPath
     }
 
@@ -145,7 +159,7 @@ Describe "アンインストール検査" -Tag Dynamic {
             throw "このテストブロックは管理者権限で実行してください。"
         }
 
-        $script:ProductCode  = Get-MsiProperty $script:MsiPath "ProductCode"
+        $script:ProductCode  = Get-MsiProperty "ProductCode"
         $script:UninstallExit = Uninstall-Msi $script:ProductCode
     }
 
