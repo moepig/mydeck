@@ -59,13 +59,15 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: |
+          dotnet restore MyDeck/MyDeck.csproj
+          dotnet restore MyDeck.Tests/MyDeck.Tests.csproj
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build MyDeck.Tests/MyDeck.Tests.csproj --no-restore --configuration Release
 
       - name: Run tests
-        run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
+        run: dotnet test MyDeck.Tests/MyDeck.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
 
   # ----------------------------------------------------------
   # 3. インストーラー ビルド + 静的テスト + 動的テスト
