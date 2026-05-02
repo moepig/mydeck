@@ -95,7 +95,7 @@ jobs:
         run: dotnet restore
 
       - name: Install WiX toolset
-        run: dotnet tool install --global wix
+        run: dotnet tool install --global wix --version "5.*"
 
       - name: Add WiX extensions
         run: |
