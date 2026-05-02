@@ -5,17 +5,19 @@ namespace MyDeck.Settings;
 
 public sealed class SettingsForm : Form
 {
-    private readonly string _configPath;
-    private AppConfig _current;
+    private readonly string   _configPath;
+    private readonly Logging.EventLog _log;
+    private AppConfig         _current;
     private readonly DataGridView _grid;
 
     /// <summary>保存ボタン押下後、新しい設定を通知する。</summary>
     public event Action<AppConfig>? ConfigSaved;
 
-    public SettingsForm(AppConfig config, string configPath)
+    public SettingsForm(AppConfig config, string configPath, Logging.EventLog log)
     {
         _current    = config;
         _configPath = configPath;
+        _log        = log;
         _grid       = BuildGrid();
         BuildLayout();
         LoadGrid();
@@ -75,9 +77,10 @@ public sealed class SettingsForm : Form
             x += 100;
             return b;
         }
-        Left("追加",      OnAdd);
-        Left("削除",      OnDelete);
-        Left("テスト実行", OnTest);
+        Left("追加",         OnAdd);
+        Left("削除",         OnDelete);
+        Left("テスト実行",   OnTest);
+        Left("イベントログ", OnOpenEventLog);
 
         // 右寄せボタン群
         var btnClose = new Button { Text = "閉じる", Width = 92, Height = 28, Top = 8, Anchor = AnchorStyles.Right | AnchorStyles.Top };
@@ -134,20 +137,52 @@ public sealed class SettingsForm : Form
                             MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
+
+        var label = string.IsNullOrWhiteSpace(args) ? exe : $"{exe} {args}";
         try
         {
-            Process.Start(new ProcessStartInfo
+            var process = Process.Start(new ProcessStartInfo
             {
                 FileName        = exe,
                 Arguments       = args,
                 UseShellExecute = true,
             });
+            _log.Add(new Logging.EventLog.Entry(DateTime.Now, "テスト", label));
+
+            if (process is not null)
+            {
+                process.EnableRaisingEvents = true;
+                process.Exited += (_, _) =>
+                {
+                    try
+                    {
+                        int code = process.ExitCode;
+                        _log.Add(new Logging.EventLog.Entry(DateTime.Now, "テスト完了", $"{label} → 終了コード {code}"));
+                    }
+                    catch { }
+                    finally { process.Dispose(); }
+                };
+            }
         }
         catch (Exception ex)
         {
+            _log.Add(new Logging.EventLog.Entry(DateTime.Now, "テスト失敗", $"{label}: {ex.Message}"));
             MessageBox.Show($"実行エラー:\n{ex.Message}", "MyDeck",
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    private Logging.EventLogForm? _eventLogForm;
+
+    private void OnOpenEventLog(object? s, EventArgs e)
+    {
+        if (_eventLogForm is { IsDisposed: false })
+        {
+            _eventLogForm.BringToFront();
+            return;
+        }
+        _eventLogForm = new Logging.EventLogForm(_log);
+        _eventLogForm.Show(this);
     }
 
     private void OnSave(object? s, EventArgs e)

@@ -1,6 +1,7 @@
 using MyDeck.Command;
 using MyDeck.Config;
 using MyDeck.Hid;
+using MyDeck.Logging;
 using MyDeck.Settings;
 using MyDeck.TrayIcon;
 
@@ -16,20 +17,23 @@ public sealed class App : IDisposable
     private readonly byte[]                   _readBuf = new byte[8];
     private readonly SynchronizationContext   _uiContext;
     private readonly EventWaitHandle          _openSettingsEvent;
+    private readonly EventLog                 _eventLog;
     private volatile CommandDispatcher        _dispatcher;
     private AppConfig                         _config;
     private CancellationTokenSource           _cts = new();
     private SettingsForm?                     _settingsForm;
+    private EventLogForm?                     _eventLogForm;
     private bool _disposed;
 
-    public App(AppConfig config, IHidDevice hid, IMyDeckCommandExecutor executor, string configPath, string eventName)
+    public App(AppConfig config, IHidDevice hid, IMyDeckCommandExecutor executor, EventLog eventLog, string configPath, string eventName)
     {
         _config            = config;
         _configPath        = configPath;
         _hid               = hid;
         _executor          = executor;
-        _dispatcher        = new CommandDispatcher(executor, config.Buttons);
-        _tray              = new TrayIconManager(OpenSettings, Application.Exit);
+        _eventLog          = eventLog;
+        _dispatcher        = new CommandDispatcher(executor, eventLog, config.Buttons);
+        _tray              = new TrayIconManager(OpenSettings, OpenEventLog, Application.Exit);
         _uiContext         = SynchronizationContext.Current ?? new SynchronizationContext();
         _openSettingsEvent = new EventWaitHandle(false, EventResetMode.AutoReset, eventName);
 
@@ -96,7 +100,6 @@ public sealed class App : IDisposable
 
     // ---- 設定画面 ----------------------------------------------
 
-    // 別プロセスからのシグナルを監視し、受信したら UI スレッドで設定画面を開く
     private void WatchOpenSettingsEvent()
     {
         while (!_disposed)
@@ -113,13 +116,26 @@ public sealed class App : IDisposable
             _settingsForm.BringToFront();
             return;
         }
-        _settingsForm = new SettingsForm(_config, _configPath);
+        _settingsForm = new SettingsForm(_config, _configPath, _eventLog);
         _settingsForm.ConfigSaved += newConfig =>
         {
             _config     = newConfig;
-            _dispatcher = new CommandDispatcher(_executor, newConfig.Buttons);
+            _dispatcher = new CommandDispatcher(_executor, _eventLog, newConfig.Buttons);
         };
         _settingsForm.Show();
+    }
+
+    // ---- イベントログ画面 ---------------------------------------
+
+    public void OpenEventLog()
+    {
+        if (_eventLogForm is { IsDisposed: false })
+        {
+            _eventLogForm.BringToFront();
+            return;
+        }
+        _eventLogForm = new EventLogForm(_eventLog);
+        _eventLogForm.Show();
     }
 
     // ---- 終了処理 ----------------------------------------------
@@ -128,13 +144,14 @@ public sealed class App : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _openSettingsEvent.Set(); // WatchOpenSettingsEvent のブロックを解除して終了させる
+        _openSettingsEvent.Set();
         _cts.Cancel();
         _reconnectTimer.Dispose();
         _hid.Write(OutputReport.SetLed(false));
         _hid.Dispose();
         _tray.Dispose();
         _settingsForm?.Close();
+        _eventLogForm?.Close();
         _openSettingsEvent.Dispose();
     }
 }
