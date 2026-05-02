@@ -29,6 +29,14 @@ BeforeAll {
     }
     $script:InstallDir = "$env:ProgramFiles\MyDeck"
     $script:RunKey     = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+    # 管理者インストールは ProgramMenuFolder が All Users に解決されるため CommonPrograms を使う
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator)
+    $script:StartMenuPrograms = if ($isAdmin) {
+        [Environment]::GetFolderPath('CommonPrograms')
+    } else {
+        [Environment]::GetFolderPath('Programs')
+    }
 
     # MSI データベースを一度だけ開いて全クエリで共有する。
     # 呼び出しごとに OpenDatabase すると COM の状態が壊れて後続クエリが null を返すため。
@@ -139,7 +147,7 @@ Describe "インストール検査" -Tag Dynamic {
     }
 
     It "スタートメニューショートカットが存在する" {
-        $shortcut = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\MyDeck\MyDeck.lnk"
+        $shortcut = "$script:StartMenuPrograms\MyDeck\MyDeck.lnk"
         $shortcut | Should -Exist
     }
 
@@ -176,7 +184,7 @@ Describe "アンインストール検査" -Tag Dynamic {
     }
 
     It "スタートメニューショートカットが削除されている" {
-        $shortcut = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\MyDeck\MyDeck.lnk"
+        $shortcut = "$script:StartMenuPrograms\MyDeck\MyDeck.lnk"
         $shortcut | Should -Not -Exist
     }
 
