@@ -9,7 +9,6 @@
     <AssemblyName>MyDeck</AssemblyName>
     <RootNamespace>MyDeck</RootNamespace>
     <ApplicationIcon>assets\tray.ico</ApplicationIcon>
-    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
   <ItemGroup>
