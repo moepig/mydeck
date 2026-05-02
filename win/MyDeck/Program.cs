@@ -2,6 +2,7 @@ using MyDeck;
 using MyDeck.Command;
 using MyDeck.Config;
 using MyDeck.Hid;
+using MyDeck.Logging;
 
 ApplicationConfiguration.Initialize();
 
@@ -12,7 +13,6 @@ using var guard = new SingleInstanceGuard(mutexName, eventName);
 
 if (!guard.IsFirstInstance)
 {
-    // 既に起動中 — --settings なら設定画面を開くようシグナルを送って終了
     if (args.Contains("--settings"))
         guard.TrySignal();
     return;
@@ -22,7 +22,6 @@ var configPath = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
     "MyDeck", "mappings.json");
 
-// 設定ファイルが存在しない場合は空の設定で新規作成する
 if (!File.Exists(configPath))
 {
     try
@@ -49,8 +48,10 @@ catch (Exception ex)
     return;
 }
 
+var eventLog = new EventLog();
+
 using var hid = new HidDevice();
-using var app = new App(config, hid, new CommandExecutor(), configPath, eventName);
+using var app = new App(config, hid, new CommandExecutor(eventLog), eventLog, configPath, eventName);
 
 if (args.Contains("--settings"))
     app.OpenSettings();

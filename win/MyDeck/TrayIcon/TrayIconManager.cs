@@ -4,15 +4,16 @@ public sealed class TrayIconManager : IDisposable
 {
     private readonly NotifyIcon _notify;
 
-    public TrayIconManager(Action onSettings, Action onExit)
+    public TrayIconManager(Action onSettings, Action onEventLog, Action onExit)
     {
         var iconPath = Path.Combine(AppContext.BaseDirectory, "assets", "tray.ico");
         var icon     = File.Exists(iconPath) ? new Icon(iconPath) : SystemIcons.Application;
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add("設定", null, (_, _) => onSettings());
+        menu.Items.Add("設定",           null, (_, _) => onSettings());
+        menu.Items.Add("イベントログ",   null, (_, _) => onEventLog());
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("終了", null, (_, _) => onExit());
+        menu.Items.Add("終了",           null, (_, _) => onExit());
 
         _notify = new NotifyIcon
         {
