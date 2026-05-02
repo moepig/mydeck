@@ -8,10 +8,42 @@ on:
 
 jobs:
   # ----------------------------------------------------------
+  # 0. 変更パス検出
+  # ----------------------------------------------------------
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      board: ${{ steps.filter.outputs.board }}
+      win_src: ${{ steps.filter.outputs.win_src }}
+      win_tests: ${{ steps.filter.outputs.win_tests }}
+      win_installer: ${{ steps.filter.outputs.win_installer }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            board:
+              - 'board/**'
+              - '.github/workflows/**'
+            win_src:
+              - 'win/MyDeck/**'
+              - '.github/workflows/**'
+            win_tests:
+              - 'win/MyDeck.Tests/**'
+              - '.github/workflows/**'
+            win_installer:
+              - 'win/MyDeck.Installer/**'
+              - 'win/MyDeck.Installer.Tests/**'
+              - '.github/workflows/**'
+
+  # ----------------------------------------------------------
   # 1. Pro Micro ユニットテスト（PlatformIO native）
   # ----------------------------------------------------------
   promicro:
     name: Pro Micro (PlatformIO native)
+    needs: changes
+    if: needs.changes.outputs.board == 'true'
     runs-on: ubuntu-latest
 
     defaults:
@@ -44,6 +76,8 @@ jobs:
   # ----------------------------------------------------------
   win:
     name: Windows C# (NUnit)
+    needs: changes
+    if: needs.changes.outputs.win_src == 'true' || needs.changes.outputs.win_tests == 'true'
     runs-on: windows-latest
 
     defaults:
@@ -76,7 +110,8 @@ jobs:
   installer:
     name: Installer (WiX + Pester)
     runs-on: windows-latest
-    needs: [win]
+    needs: changes
+    if: needs.changes.outputs.win_src == 'true' || needs.changes.outputs.win_installer == 'true'
 
     defaults:
       run:
@@ -114,7 +149,7 @@ jobs:
             -c Release `
             -p:PublishDir=${{ github.workspace }}\win\artifacts\publish\
           New-Item -ItemType Directory -Force -Path artifacts/installer
-          Copy-Item MyDeck.Installer/bin/Release/MyDeck-Setup.msi artifacts/installer/
+          Copy-Item MyDeck.Installer/bin/x64/Release/en-US/MyDeck-Setup.msi artifacts/installer/
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
