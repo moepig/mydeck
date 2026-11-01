@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="HidApi.Net" Version="0.4.0" />
+    <PackageReference Include="HidApi.Net" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>
